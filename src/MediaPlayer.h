@@ -3,6 +3,7 @@
 #ifdef SS_HAS_MEDIA
 
 #include <QImage>
+#include <QPainterPath>
 #include <QTimer>
 #include <QVariantAnimation>
 #include <QWidget>
