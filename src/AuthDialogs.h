@@ -3,7 +3,7 @@
 #include <QByteArray>
 #include <QDialog>
 #include <QString>
-#include <QPainterPath>
+#include <QLineEdit>
 #include "Vault.h"
 
 class QCheckBox;
