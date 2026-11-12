@@ -1310,6 +1310,8 @@ bool Vault::exportItem(const QString& id, const QString& destDir, const Progress
         if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate))
             return fail(err, QObject::tr("No se pudo escribir en el destino."));
         std::vector<unsigned char> buf(std::size_t(1) << 20);
+        std::vector<unsigned char> plain(static_cast<std::size_t>(kChunk));
+        std::vector<unsigned char> ct(static_cast<std::size_t>(kChunk) + kTag);
         Wipe w{buf.data(), buf.size()};
         qint64 total = 0;
         ok = true;
