@@ -25,8 +25,6 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact_path: build/SecureSpace
-          - os: macos-latest
-            artifact_path: build/SecureSpace.app
           - os: windows-latest
             artifact_path: build/Release/SecureSpace.exe
 
@@ -47,33 +45,24 @@ jobs:
             qt6-multimedia-dev \
             libsodium-dev
 
-      - name: Install macOS dependencies
-        if: runner.os == 'macOS'
-        run: |
-          brew install cmake pkg-config ccache qt libsodium
-          echo "CMAKE_PREFIX_PATH=$(brew --prefix qt)" >> "$GITHUB_ENV"
-
       - name: Install Windows dependencies
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $VcpkgRoot = Join-Path $env:RUNNER_TEMP "vcpkg"
           git clone --depth 1 https://github.com/microsoft/vcpkg $VcpkgRoot
-
           & "$VcpkgRoot\bootstrap-vcpkg.bat" -disableMetrics
           if ($LASTEXITCODE -ne 0) {
             throw "Falló la inicialización de vcpkg."
           }
-
           & "$VcpkgRoot\vcpkg.exe" install qtbase qtmultimedia libsodium --triplet x64-windows
           if ($LASTEXITCODE -ne 0) {
-            throw "Falló la instalación de qtbase, qtmultimedia o libsodium."
+            throw "Falló la instalación de Qt y libsodium."
           }
-
           "VCPKG_ROOT=$VcpkgRoot" >> $env:GITHUB_ENV
 
-      - name: Configure CMake (Linux/macOS)
-        if: runner.os != 'Windows'
+      - name: Configure CMake (Linux)
+        if: runner.os == 'Linux'
         run: >
           cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Release
@@ -94,10 +83,6 @@ jobs:
       - name: Verify build output (Linux)
         if: runner.os == 'Linux'
         run: test -x build/SecureSpace
-
-      - name: Verify build output (macOS)
-        if: runner.os == 'macOS'
-        run: test -d build/SecureSpace.app
 
       - name: Verify build output (Windows)
         if: runner.os == 'Windows'
