@@ -18,7 +18,7 @@ jobs:
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -34,7 +34,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Ubuntu dependencies
+      - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
@@ -59,8 +59,17 @@ jobs:
         run: |
           $VcpkgRoot = Join-Path $env:RUNNER_TEMP "vcpkg"
           git clone --depth 1 https://github.com/microsoft/vcpkg $VcpkgRoot
+
           & "$VcpkgRoot\bootstrap-vcpkg.bat" -disableMetrics
-          & "$VcpkgRoot\vcpkg.exe" install qt6-base qt6-multimedia libsodium --triplet x64-windows
+          if ($LASTEXITCODE -ne 0) {
+            throw "Falló la inicialización de vcpkg."
+          }
+
+          & "$VcpkgRoot\vcpkg.exe" install qtbase qtmultimedia libsodium --triplet x64-windows
+          if ($LASTEXITCODE -ne 0) {
+            throw "Falló la instalación de qtbase, qtmultimedia o libsodium."
+          }
+
           "VCPKG_ROOT=$VcpkgRoot" >> $env:GITHUB_ENV
 
       - name: Configure CMake (Linux/macOS)
