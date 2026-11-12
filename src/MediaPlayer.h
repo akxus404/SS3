@@ -7,6 +7,7 @@
 #include <QVariantAnimation>
 #include <QWidget>
 #include <memory>
+#include <QPainterPath>
 
 #include "Vault.h"
 
