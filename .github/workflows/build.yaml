@@ -52,13 +52,9 @@ jobs:
           $VcpkgRoot = Join-Path $env:RUNNER_TEMP "vcpkg"
           git clone --depth 1 https://github.com/microsoft/vcpkg $VcpkgRoot
           & "$VcpkgRoot\bootstrap-vcpkg.bat" -disableMetrics
-          if ($LASTEXITCODE -ne 0) {
-            throw "Falló la inicialización de vcpkg."
-          }
+          if ($LASTEXITCODE -ne 0) { throw "Falló la inicialización de vcpkg." }
           & "$VcpkgRoot\vcpkg.exe" install qtbase qtmultimedia libsodium --triplet x64-windows
-          if ($LASTEXITCODE -ne 0) {
-            throw "Falló la instalación de Qt y libsodium."
-          }
+          if ($LASTEXITCODE -ne 0) { throw "Falló la instalación de Qt y libsodium." }
           "VCPKG_ROOT=$VcpkgRoot" >> $env:GITHUB_ENV
 
       - name: Configure CMake (Linux)
