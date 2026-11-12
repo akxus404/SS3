@@ -1,0 +1,106 @@
+name: Build Secure Space
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_path: build/SecureSpace
+          - os: macos-latest
+            artifact_path: build/SecureSpace.app
+          - os: windows-latest
+            artifact_path: build/Release/SecureSpace.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Ubuntu dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            ccache \
+            qt6-base-dev \
+            qt6-multimedia-dev \
+            libsodium-dev
+
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake pkg-config ccache qt libsodium
+          echo "CMAKE_PREFIX_PATH=$(brew --prefix qt)" >> "$GITHUB_ENV"
+
+      - name: Install Windows dependencies
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $VcpkgRoot = Join-Path $env:RUNNER_TEMP "vcpkg"
+          git clone --depth 1 https://github.com/microsoft/vcpkg $VcpkgRoot
+          & "$VcpkgRoot\bootstrap-vcpkg.bat" -disableMetrics
+          & "$VcpkgRoot\vcpkg.exe" install qt6-base qt6-multimedia libsodium --triplet x64-windows
+          "VCPKG_ROOT=$VcpkgRoot" >> $env:GITHUB_ENV
+
+      - name: Configure CMake (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Release
+          "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_TARGET_TRIPLET=x64-windows
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Verify build output (Linux)
+        if: runner.os == 'Linux'
+        run: test -x build/SecureSpace
+
+      - name: Verify build output (macOS)
+        if: runner.os == 'macOS'
+        run: test -d build/SecureSpace.app
+
+      - name: Verify build output (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (!(Test-Path "build/Release/SecureSpace.exe")) {
+            throw "No se encontró build/Release/SecureSpace.exe"
+          }
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SecureSpace-${{ runner.os }}
+          path: ${{ matrix.artifact_path }}
+          if-no-files-found: error
